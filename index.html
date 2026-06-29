@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>採購法隨機題庫</title>
+<style>
+html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif;background:#f4f7fb;color:#14213d}
+body{display:grid;place-items:center}
+main{width:min(680px,calc(100% - 40px));padding:32px;border:1px solid #dbe3ee;border-radius:18px;background:#fff;box-shadow:0 18px 50px rgba(20,33,61,.09);text-align:center}
+.spinner{width:44px;height:44px;margin:0 auto 20px;border:5px solid #dbe3ee;border-top-color:#2457a7;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+h1{font-size:1.35rem;margin:0 0 10px}p{line-height:1.7;margin:0;color:#52657c}#error{display:none;margin-top:18px;padding:14px;border-radius:10px;background:#fff0f0;color:#9f1d1d;text-align:left;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<main>
+<div class="spinner" aria-hidden="true"></div>
+<h1>正在載入採購法題庫</h1>
+<p>首次開啟需載入並解壓縮完整題庫，請稍候。</p>
+<div id="error"></div>
+</main>
+<script type="module">
+(async()=>{
+  const showError=(e)=>{
+    console.error(e);
+    const el=document.getElementById('error');
+    if(el){el.style.display='block';el.textContent='題庫載入失敗：'+(e?.message||String(e))+'\n請確認網路連線後重新整理。';}
+  };
+  try{
+    const files=Array.from({length:5},(_,i)=>`payload2/${i}.txt`);
+    const parts=await Promise.all(files.map(async path=>{
+      const r=await fetch(path,{cache:'no-store'});
+      if(!r.ok) throw new Error(`${path}：HTTP ${r.status}`);
+      return r.text();
+    }));
+    const b64=parts.join('').replace(/\s+/g,'');
+    const raw=atob(b64);
+    const compressed=new Uint8Array(raw.length);
+    for(let i=0;i<raw.length;i++) compressed[i]=raw.charCodeAt(i);
+
+    let page='';
+    let firstError;
+    try{
+      const mod=await import('https://cdn.jsdelivr.net/npm/brotli-dec-wasm@2.3.2/index.js');
+      const brotli=await mod.default;
+      page=new TextDecoder('utf-8').decode(brotli.decompress(compressed));
+      if(!/<(?:!doctype|html)[\s>]/i.test(page)) throw new Error('Brotli 解壓後不是有效 HTML');
+    }catch(e){
+      firstError=e;
+      const {decompress}=await import('https://cdn.jsdelivr.net/npm/fzstd@0.1.1/+esm');
+      page=new TextDecoder('utf-8').decode(decompress(compressed));
+      if(!/<(?:!doctype|html)[\s>]/i.test(page)) throw firstError;
+    }
+
+    document.open();
+    document.write(page);
+    document.close();
+  }catch(e){showError(e);}
+})();
+</script>
+</body>
+</html>
