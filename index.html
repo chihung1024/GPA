@@ -2,62 +2,110 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f4f7fb">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <title>採購法隨機題庫</title>
 <style>
-html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif;background:#f4f7fb;color:#14213d}
-body{display:grid;place-items:center}
-main{width:min(680px,calc(100% - 40px));padding:32px;border:1px solid #dbe3ee;border-radius:18px;background:#fff;box-shadow:0 18px 50px rgba(20,33,61,.09);text-align:center}
-.spinner{width:44px;height:44px;margin:0 auto 20px;border:5px solid #dbe3ee;border-top-color:#2457a7;border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-h1{font-size:1.35rem;margin:0 0 10px}p{line-height:1.7;margin:0;color:#52657c}#error{display:none;margin-top:18px;padding:14px;border-radius:10px;background:#fff0f0;color:#9f1d1d;text-align:left;white-space:pre-wrap}
+html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif;background:#f4f7fb;color:#14213d}body{display:grid;place-items:center}main{width:min(680px,calc(100% - 40px));padding:30px;border:1px solid #dbe3ee;border-radius:18px;background:#fff;box-shadow:0 18px 50px rgba(20,33,61,.09);text-align:center}.spinner{width:42px;height:42px;margin:0 auto 18px;border:5px solid #dbe3ee;border-top-color:#2457a7;border-radius:50%;animation:spin .75s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}h1{font-size:1.35rem;margin:0 0 10px}p{line-height:1.7;margin:0;color:#52657c}#progress{margin-top:10px;font-size:.92rem;color:#708197}#error{display:none;margin-top:18px;padding:14px;border-radius:10px;background:#fff0f0;color:#9f1d1d;text-align:left;white-space:pre-wrap}.retry{display:none;margin:16px auto 0;padding:10px 18px;border:0;border-radius:9px;background:#2457a7;color:white;font:inherit;font-weight:700}
 </style>
 </head>
 <body>
 <main>
 <div class="spinner" aria-hidden="true"></div>
-<h1>正在載入採購法題庫</h1>
-<p>首次開啟需載入並解壓縮完整題庫，請稍候。</p>
+<h1>正在啟動採購法題庫</h1>
+<p>題庫會在資料準備完成後直接開啟。</p>
+<div id="progress">讀取題庫資料中…</div>
 <div id="error"></div>
+<button class="retry" id="retry" type="button">重新載入</button>
 </main>
 <script type="module">
-(async()=>{
-  const showError=(e)=>{
-    console.error(e);
-    const el=document.getElementById('error');
-    if(el){el.style.display='block';el.textContent='題庫載入失敗：'+(e?.message||String(e))+'\n請確認網路連線後重新整理。';}
-  };
+const $=s=>document.querySelector(s);
+const progress=t=>{$('#progress').textContent=t};
+const nextFrame=()=>new Promise(r=>requestAnimationFrame(()=>r()));
+const validHtml=s=>/<(?:!doctype|html)[\s>]/i.test(s.slice(0,500));
+
+function cleanPart(s,keepPadding=true){
+  s=String(s).replace(/\s+/g,'').replace(/[^A-Za-z0-9+/=]/g,'');
+  return keepPadding?s:s.replace(/=/g,'');
+}
+function decodeOne(s){
+  s=cleanPart(s,false);
+  if(s.length%4===1) throw new Error('題庫資料長度不完整');
+  s+='='.repeat((4-s.length%4)%4);
+  const raw=atob(s),out=new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++) out[i]=raw.charCodeAt(i);
+  return out;
+}
+function joinBytes(chunks){
+  const n=chunks.reduce((a,b)=>a+b.length,0),out=new Uint8Array(n);
+  let p=0;for(const c of chunks){out.set(c,p);p+=c.length}return out;
+}
+function decodeCandidates(parts){
+  const list=[];
+  // 方案一：各檔為獨立 Base64 區塊（可處理區塊尾端的 = padding）。
+  try{list.push(joinBytes(parts.map(decodeOne)))}catch(e){console.warn('chunk decode failed',e)}
+  // 方案二：各檔為同一條 Base64 字串的分段。
+  try{list.push(decodeOne(parts.map(x=>cleanPart(x,false)).join('')))}catch(e){console.warn('joined decode failed',e)}
+  if(!list.length) throw new Error('題庫資料無法解碼');
+  return list;
+}
+async function tryBrotli(candidates){
+  progress('解壓縮題庫中…');await nextFrame();
+  const mod=await import('https://cdn.jsdelivr.net/npm/brotli-dec-wasm@2.3.2/index.js');
+  const brotli=await mod.default;
+  for(const bytes of candidates){
+    try{
+      const page=new TextDecoder('utf-8').decode(brotli.decompress(bytes));
+      if(validHtml(page)) return page;
+    }catch(e){console.warn('brotli candidate failed',e)}
+  }
+  throw new Error('Brotli 解壓縮失敗');
+}
+async function tryZstd(candidates){
+  progress('切換相容模式中…');await nextFrame();
+  const {decompress}=await import('https://cdn.jsdelivr.net/npm/fzstd@0.1.1/+esm');
+  for(const bytes of candidates){
+    try{
+      const page=new TextDecoder('utf-8').decode(decompress(bytes));
+      if(validHtml(page)) return page;
+    }catch(e){console.warn('zstd candidate failed',e)}
+  }
+  throw new Error('題庫壓縮資料不完整');
+}
+async function openPage(page){
+  progress('開啟題庫…');await nextFrame();
+  document.open();document.write(page);document.close();
+}
+async function start(){
   try{
     const files=Array.from({length:5},(_,i)=>`payload2/${i}.txt`);
+    let done=0;
     const parts=await Promise.all(files.map(async path=>{
-      const r=await fetch(path,{cache:'no-store'});
+      const r=await fetch(path,{cache:'force-cache'});
       if(!r.ok) throw new Error(`${path}：HTTP ${r.status}`);
-      return r.text();
+      const text=await r.text();
+      done++;progress(`讀取題庫資料中… ${done}/${files.length}`);
+      return text;
     }));
-    const b64=parts.join('').replace(/\s+/g,'');
-    const raw=atob(b64);
-    const compressed=new Uint8Array(raw.length);
-    for(let i=0;i<raw.length;i++) compressed[i]=raw.charCodeAt(i);
-
-    let page='';
-    let firstError;
-    try{
-      const mod=await import('https://cdn.jsdelivr.net/npm/brotli-dec-wasm@2.3.2/index.js');
-      const brotli=await mod.default;
-      page=new TextDecoder('utf-8').decode(brotli.decompress(compressed));
-      if(!/<(?:!doctype|html)[\s>]/i.test(page)) throw new Error('Brotli 解壓後不是有效 HTML');
-    }catch(e){
-      firstError=e;
-      const {decompress}=await import('https://cdn.jsdelivr.net/npm/fzstd@0.1.1/+esm');
-      page=new TextDecoder('utf-8').decode(decompress(compressed));
-      if(!/<(?:!doctype|html)[\s>]/i.test(page)) throw firstError;
+    progress('驗證題庫資料中…');await nextFrame();
+    const candidates=decodeCandidates(parts);
+    let page;
+    try{page=await tryBrotli(candidates)}catch(first){
+      console.warn(first);page=await tryZstd(candidates);
     }
-
-    document.open();
-    document.write(page);
-    document.close();
-  }catch(e){showError(e);}
-})();
+    await openPage(page);
+  }catch(err){
+    console.error(err);
+    $('.spinner').style.display='none';
+    $('#progress').style.display='none';
+    const el=$('#error');el.style.display='block';
+    el.textContent='題庫載入失敗：'+(err?.message||String(err))+'\n請重新整理；若仍失敗，請清除網站快取後再開啟。';
+    $('#retry').style.display='block';
+  }
+}
+$('#retry').addEventListener('click',()=>location.reload());
+start();
 </script>
 </body>
 </html>
