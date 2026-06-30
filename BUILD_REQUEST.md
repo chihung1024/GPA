@@ -1,1 +1,1 @@
-Static site rebuild request.
+Static site rebuild request, attempt 2.
