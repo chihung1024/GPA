@@ -1,17 +1,10 @@
 name: Rebuild static quiz
-
 on:
   push:
-    paths:
-      - .github/workflows/rebuild-static.yml
-  pull_request:
-    branches:
-      - main
+    paths: [.github/workflows/rebuild-static.yml]
   workflow_dispatch:
-
 permissions:
   contents: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,107 +12,43 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-
-      - name: Rebuild index.html from stored payload
-        shell: bash
+      - run: python3 -m pip install brotli
+      - name: Produce static index
         run: |
           python3 <<'PY'
           from pathlib import Path
-          import base64
-          import re
-          import subprocess
-
-          diagnostics = []
-          files = sorted(Path('payload').glob('*.txt'))
-          diagnostics.append('files=' + ','.join(p.name for p in files))
-          diagnostics.append('file_count=' + str(len(files)))
-          parts = [p.read_text(encoding='utf-8') for p in files]
-
-          def clean(value):
-              return re.sub(r'[^A-Za-z0-9+/=]', '', value)
-
-          for p, text in zip(files, parts):
-              c = clean(text)
-              diagnostics.append(f'{p.name}: raw={len(text)} clean={len(c)} nopad={len(c.replace("=", ""))} mod={len(c.replace("=", "")) % 4} eq={c.count("=")}')
-
-          joined_clean = clean(''.join(parts))
-          diagnostics.append(f'joined: clean={len(joined_clean)} nopad={len(joined_clean.replace("=", ""))} mod={len(joined_clean.replace("=", "")) % 4} eq={joined_clean.count("=")}')
-
-          def decode_stream(value, max_trim=12):
-              raw = clean(value).replace('=', '')
-              results = []
-              for trim in range(max_trim + 1):
-                  text = raw[:-trim] if trim else raw
-                  if not text or len(text) % 4 == 1:
-                      continue
-                  text += '=' * ((4 - len(text) % 4) % 4)
-                  try:
-                      data = base64.b64decode(text, validate=True)
-                  except Exception as exc:
-                      diagnostics.append(f'decode trim={trim} failed: {exc}')
-                      continue
-                  results.append((trim, data))
-              return results
-
-          candidates = decode_stream(''.join(parts))
-          diagnostics.append('joined_candidates=' + str([(t, len(d), d[:8].hex()) for t, d in candidates]))
-
+          import base64, brotli, re
+          files=sorted(Path('payload2').glob('*.txt'))
+          parts=[p.read_text() for p in files]
+          variants=[]
+          joined=re.sub(r'\s+','',''.join(parts))
+          try: variants.append(('joined',base64.b64decode(joined,validate=True)))
+          except Exception as e: print('joined',e)
           try:
-              decoded_parts = []
-              selected = []
-              for p, part in zip(files, parts):
-                  options = decode_stream(part, max_trim=4)
-                  if not options:
-                      raise ValueError(f'{p.name} has no candidate')
-                  trim, data = options[0]
-                  selected.append((p.name, trim, len(data), data[:4].hex()))
-                  decoded_parts.append(data)
-              per_part = b''.join(decoded_parts)
-              diagnostics.append('per_part_selected=' + str(selected))
-              candidates.append((-1, per_part))
-          except Exception as exc:
-              diagnostics.append('per_part_error=' + repr(exc))
-
-          success = False
-          seen = set()
-          for number, (trim, data) in enumerate(candidates):
-              signature = (len(data), data[:16], data[-16:])
-              if signature in seen:
-                  continue
-              seen.add(signature)
-              source = Path(f'/tmp/quiz-{number}.zst')
-              source.write_bytes(data)
-              test = subprocess.run(['zstd', '--test', str(source)], capture_output=True, text=True)
-              diagnostics.append(f'candidate {number}: trim={trim} len={len(data)} magic={data[:8].hex()} test={test.returncode} stderr={test.stderr.strip()}')
-              if test.returncode != 0:
-                  continue
-              subprocess.run(['zstd', '--decompress', '--force', str(source), '-o', 'index.html'], check=True)
-              html = Path('index.html').read_bytes()
-              diagnostics.append(f'html_len={len(html)} html_prefix={html[:40]!r}')
-              if b'<html' not in html[:1000].lower() and b'<!doctype html' not in html[:1000].lower():
-                  continue
-              success = True
-              break
-
-          Path('BUILD_DIAGNOSTIC.txt').write_text('\n'.join(diagnostics) + '\n', encoding='utf-8')
-          if not success:
-              raise SystemExit('No valid Zstandard payload candidate found')
+              out=[]
+              for part in parts:
+                  s=re.sub(r'[^A-Za-z0-9+/]','',part)
+                  s+='='*((4-len(s)%4)%4)
+                  out.append(base64.b64decode(s,validate=True))
+              variants.append(('parts',b''.join(out)))
+          except Exception as e: print('parts',e)
+          for name,data in variants:
+              try:
+                  html=brotli.decompress(data)
+                  if b'<html' in html[:2000].lower() or b'<!doctype html' in html[:2000].lower():
+                      Path('index.html').write_bytes(html)
+                      Path('BUILD_SUCCESS.txt').write_text(f'{name}\n{len(html)}\n')
+                      break
+              except Exception as e: print(name,e)
+          else: raise SystemExit('no valid payload')
           PY
-
           rm -rf functions
           rm -f _routes.json
-          printf '/\n  Cache-Control: no-cache, no-store, must-revalidate\n/index.html\n  Cache-Control: no-cache, no-store, must-revalidate\n' > _headers
-
-      - name: Commit static site or diagnostics
-        if: always()
-        shell: bash
+          printf '/\n  Cache-Control: no-cache, no-store, must-revalidate\n' > _headers
+      - name: Commit
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A index.html functions _routes.json _headers BUILD_DIAGNOSTIC.txt
-          if git diff --cached --quiet; then
-            echo "No changes"
-          else
-            git commit -m "Record static quiz rebuild result"
-            git push origin main
-          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m 'Publish verified static quiz' || exit 0
+          git push origin main
