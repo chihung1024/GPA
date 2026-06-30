@@ -4,96 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f4f7fb">
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <title>採購法隨機題庫</title>
 <style>
-html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif;background:#f4f7fb;color:#14213d}body{display:grid;place-items:center}main{width:min(680px,calc(100% - 40px));padding:30px;border:1px solid #dbe3ee;border-radius:18px;background:#fff;box-shadow:0 18px 50px rgba(20,33,61,.09);text-align:center}.spinner{width:42px;height:42px;margin:0 auto 18px;border:5px solid #dbe3ee;border-top-color:#2457a7;border-radius:50%;animation:spin .75s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}h1{font-size:1.35rem;margin:0 0 10px}p{line-height:1.7;margin:0;color:#52657c}#progress{margin-top:10px;font-size:.92rem;color:#708197}#error{display:none;margin-top:18px;padding:14px;border-radius:10px;background:#fff0f0;color:#9f1d1d;text-align:left;white-space:pre-wrap}.retry{display:none;margin:16px auto 0;padding:10px 18px;border:0;border-radius:9px;background:#2457a7;color:white;font:inherit;font-weight:700}
+html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif;background:#f4f7fb;color:#14213d}body{display:grid;place-items:center}main{width:min(620px,calc(100% - 40px));padding:28px;border:1px solid #dbe3ee;border-radius:18px;background:#fff;box-shadow:0 18px 50px rgba(20,33,61,.09);text-align:center}.spinner{width:40px;height:40px;margin:0 auto 18px;border:5px solid #dbe3ee;border-top-color:#2457a7;border-radius:50%;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}h1{font-size:1.3rem;margin:0 0 8px}p{line-height:1.7;margin:0;color:#52657c}a{display:inline-block;margin-top:16px;color:#2457a7;font-weight:700}
 </style>
+<script>
+location.replace('/quiz-content' + location.search + location.hash);
+</script>
 </head>
 <body>
 <main>
 <div class="spinner" aria-hidden="true"></div>
-<h1>正在啟動採購法題庫</h1>
-<p>通常數秒內即可進入，無須停留在此頁操作。</p>
-<div id="progress">同步載入題庫與解壓縮元件…</div>
-<div id="error"></div>
-<button class="retry" id="retry" type="button">重新載入</button>
+<h1>正在開啟採購法題庫</h1>
+<p>題庫由本站直接提供，不再載入外部解壓縮元件。</p>
+<noscript><a href="/quiz-content">開啟題庫</a></noscript>
 </main>
-<script type="module">
-const $=s=>document.querySelector(s);
-const progress=t=>{$('#progress').textContent=t};
-const nextFrame=()=>new Promise(r=>requestAnimationFrame(()=>r()));
-const validHtml=s=>/<(?:!doctype|html)[\s>]/i.test(s.slice(0,500));
-const timeout=(ms,msg)=>new Promise((_,reject)=>setTimeout(()=>reject(new Error(msg)),ms));
-
-function cleanPart(s){return String(s).replace(/\s+/g,'').replace(/[^A-Za-z0-9+/=]/g,'')}
-function decodeOne(s){
-  s=cleanPart(s).replace(/=/g,'');
-  if(s.length%4===1) throw new Error('題庫資料長度不完整');
-  s+='='.repeat((4-s.length%4)%4);
-  const raw=atob(s),out=new Uint8Array(raw.length);
-  for(let i=0;i<raw.length;i++)out[i]=raw.charCodeAt(i);
-  return out;
-}
-function joinBytes(chunks){
-  const n=chunks.reduce((a,b)=>a+b.length,0),out=new Uint8Array(n);
-  let p=0;for(const c of chunks){out.set(c,p);p+=c.length}return out;
-}
-function decodeCandidates(parts){
-  const list=[];
-  try{list.push(joinBytes(parts.map(decodeOne)))}catch(e){console.warn('chunk decode failed',e)}
-  try{list.push(decodeOne(parts.map(x=>cleanPart(x).replace(/=/g,'')).join('')))}catch(e){console.warn('joined decode failed',e)}
-  if(!list.length)throw new Error('題庫資料無法解碼');
-  return list;
-}
-async function loadBrotli(){
-  const mod=await import('https://cdn.jsdelivr.net/npm/brotli-dec-wasm@2.3.2/index.js');
-  return mod.default;
-}
-async function tryBrotli(candidates,brotli){
-  progress('解壓縮題庫中…');await nextFrame();
-  for(const bytes of candidates){
-    try{const page=new TextDecoder().decode(brotli.decompress(bytes));if(validHtml(page))return page}
-    catch(e){console.warn('brotli candidate failed',e)}
-  }
-  throw new Error('Brotli 解壓縮失敗');
-}
-async function tryZstd(candidates){
-  progress('切換相容模式中…');await nextFrame();
-  const {decompress}=await import('https://cdn.jsdelivr.net/npm/fzstd@0.1.1/+esm');
-  for(const bytes of candidates){
-    try{const page=new TextDecoder().decode(decompress(bytes));if(validHtml(page))return page}
-    catch(e){console.warn('zstd candidate failed',e)}
-  }
-  throw new Error('題庫壓縮資料不完整');
-}
-async function startCore(){
-  const files=Array.from({length:5},(_,i)=>`payload2/${i}.txt`);
-  let done=0;
-  const decoderPromise=loadBrotli();
-  const partsPromise=Promise.all(files.map(async path=>{
-    const r=await fetch(path,{cache:'force-cache'});
-    if(!r.ok)throw new Error(`${path}：HTTP ${r.status}`);
-    const text=await r.text();done++;progress(`讀取題庫資料中… ${done}/${files.length}`);return text;
-  }));
-  const [parts,brotli]=await Promise.all([partsPromise,decoderPromise]);
-  progress('驗證題庫資料中…');await nextFrame();
-  const candidates=decodeCandidates(parts);
-  let page;
-  try{page=await tryBrotli(candidates,brotli)}catch(first){console.warn(first);page=await tryZstd(candidates)}
-  progress('開啟題庫…');await nextFrame();
-  document.open();document.write(page);document.close();
-}
-async function start(){
-  try{await Promise.race([startCore(),timeout(18000,'載入逾時，請重新載入')])}
-  catch(err){
-    console.error(err);$('.spinner').style.display='none';$('#progress').style.display='none';
-    const el=$('#error');el.style.display='block';
-    el.textContent='題庫載入失敗：'+(err?.message||String(err))+'\n請按「重新載入」；若仍失敗，請關閉瀏覽器分頁後再開啟。';
-    $('#retry').style.display='block';
-  }
-}
-$('#retry').addEventListener('click',()=>location.reload());start();
-</script>
 </body>
 </html>
