@@ -14,15 +14,26 @@ async function readAsset(context, path) {
   return response.text();
 }
 
-async function loadPayload(context) {
-  // payload2/0.txt～4.txt 是同一個 Brotli 壓縮檔的 Base64 連續分段。
-  // 不再套用另一版壓縮檔的固定長度及檔頭，避免誤判後回傳 HTTP 500。
-  const parts = await Promise.all(PART_PATHS.map((path) => readAsset(context, path)));
-  const base64 = parts.map((part) => part.trim()).join("");
-  const binary = atob(base64);
+function decodeBase64Part(value, index) {
+  let text = String(value)
+    .replace(/\s+/g, "")
+    .replace(/[^A-Za-z0-9+/=]/g, "")
+    .replace(/=/g, "");
 
-  if (!binary.length) {
-    throw new Error("題庫壓縮資料為空");
+  if (!text.length) {
+    throw new Error(`題庫分段 ${index + 1} 為空`);
+  }
+  if (text.length % 4 === 1) {
+    throw new Error(`題庫分段 ${index + 1} 的 Base64 長度不正確`);
+  }
+
+  text += "=".repeat((4 - (text.length % 4)) % 4);
+
+  let binary;
+  try {
+    binary = atob(text);
+  } catch (error) {
+    throw new Error(`題庫分段 ${index + 1} 無法解碼：${error?.message || error}`);
   }
 
   const bytes = new Uint8Array(binary.length);
@@ -30,6 +41,30 @@ async function loadPayload(context) {
     bytes[i] = binary.charCodeAt(i);
   }
   return bytes;
+}
+
+function joinBytes(parts) {
+  const total = parts.reduce((sum, part) => sum + part.byteLength, 0);
+  const output = new Uint8Array(total);
+  let offset = 0;
+  for (const part of parts) {
+    output.set(part, offset);
+    offset += part.byteLength;
+  }
+  return output;
+}
+
+async function loadPayload(context) {
+  // 每個 payload2/*.txt 都是可獨立解碼的 Base64 區塊；
+  // 區塊末端可能含有 padding，因此不可先直接串接文字再呼叫 atob()。
+  const texts = await Promise.all(PART_PATHS.map((path) => readAsset(context, path)));
+  const decodedParts = texts.map((text, index) => decodeBase64Part(text, index));
+  const payload = joinBytes(decodedParts);
+
+  if (!payload.byteLength) {
+    throw new Error("題庫壓縮資料為空");
+  }
+  return payload;
 }
 
 function escapeHtml(value) {
