@@ -4,6 +4,11 @@ on:
   push:
     paths:
       - .github/workflows/rebuild-static.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - trigger-static-rebuild.txt
   workflow_dispatch:
 
 permissions:
