@@ -1,1 +1,1 @@
-Static site rebuild request, attempt 2.
+Static site rebuild request, diagnostic attempt.
