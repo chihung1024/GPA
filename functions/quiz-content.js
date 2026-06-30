@@ -81,9 +81,11 @@ export async function onRequestGet(context) {
 
     return new Response(payload, {
       status: 200,
+      encodeBody: "manual",
       headers: {
         "Content-Type": "text/html; charset=utf-8",
         "Content-Encoding": "br",
+        "Content-Length": String(payload.byteLength),
         "Cache-Control": "public, max-age=300, s-maxage=86400",
         "Vary": "Accept-Encoding",
         "X-Content-Type-Options": "nosniff",
