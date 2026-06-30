@@ -22,27 +22,45 @@ function toBytes(binary) {
   return bytes;
 }
 
+function normalizeBase64(value) {
+  return String(value)
+    .replace(/\s+/g, "")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/-/g, "+")
+    .replace(/_/g, "/")
+    .replace(/[^A-Za-z0-9+/=]/g, "");
+}
+
+function padded(value) {
+  const clean = value.replace(/=/g, "");
+  if (!clean.length) return "";
+  if (clean.length % 4 === 1) return null;
+  return clean + "=".repeat((4 - (clean.length % 4)) % 4);
+}
+
 function decodeJoinedBase64(parts) {
+  const rawJoined = parts.join("").replace(/\s+/g, "");
+  const normalized = normalizeBase64(parts.join(""));
+  const noPadding = normalized.replace(/=/g, "");
   const attempts = [];
 
-  // 原始資料是同一條 Base64 字串切成 5 個文字檔，應先串接再解碼。
-  attempts.push(parts.join("").replace(/\s+/g, ""));
+  attempts.push(rawJoined);
+  const p0 = padded(normalized);
+  if (p0) attempts.push(p0);
 
-  // 相容模式：移除非 Base64 字元與分段中可能殘留的 padding，
-  // 最後只在整條字串尾端重新補上合法 padding。
-  let normalized = parts
-    .join("")
-    .replace(/\s+/g, "")
-    .replace(/[^A-Za-z0-9+/=]/g, "")
-    .replace(/=/g, "");
-
-  if (normalized.length % 4 !== 1) {
-    normalized += "=".repeat((4 - (normalized.length % 4)) % 4);
-    attempts.push(normalized);
+  // Repair mode: the previous oversized uploads occasionally left one or more
+  // stray Base64 characters at the boundary/end. Try trimming a few terminal
+  // characters before padding. This avoids the invalid length == 1 mod 4 case.
+  for (let trim = 1; trim <= 8; trim += 1) {
+    const candidate = padded(noPadding.slice(0, -trim));
+    if (candidate) attempts.push(candidate);
   }
 
   const errors = [];
+  const seen = new Set();
   for (const candidate of attempts) {
+    if (!candidate || seen.has(candidate)) continue;
+    seen.add(candidate);
     try {
       const binary = atob(candidate);
       if (binary.length) return toBytes(binary);
@@ -51,7 +69,7 @@ function decodeJoinedBase64(parts) {
     }
   }
 
-  throw new Error(`完整題庫 Base64 無法解碼：${errors.join(" | ") || "資料長度不正確"}`);
+  throw new Error(`完整題庫 Base64 無法解碼；原始長度=${rawJoined.length}，清理後長度=${noPadding.length}，餘數=${noPadding.length % 4}。${errors[0] || ""}`);
 }
 
 async function loadPayload(context) {
