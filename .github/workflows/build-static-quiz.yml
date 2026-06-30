@@ -4,6 +4,11 @@ on:
   push:
     paths:
       - .github/workflows/build-static-quiz.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - trigger-static-build.txt
   workflow_dispatch:
 
 permissions:
@@ -92,7 +97,7 @@ jobs:
           <main>
           <div class="spinner" aria-hidden="true"></div>
           <h1>正在開啟採購法題庫</h1>
-          <p>題庫資料已由網站本身提供，不再連線下載第三方元件。</p>
+          <p>題庫資料由網站本身提供，不再連線下載第三方元件。</p>
           <div id="progress">讀取題庫中…</div>
           <div id="error"></div>
           <button id="retry" type="button">重新載入</button>
@@ -149,7 +154,6 @@ jobs:
           </html>
           '''
 
-          # Remove indentation introduced by the Python heredoc for cleaner output.
           index = '\n'.join(line[10:] if line.startswith('          ') else line for line in index.splitlines()) + '\n'
           Path('index.html').write_text(index, encoding='utf-8')
 
