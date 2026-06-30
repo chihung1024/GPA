@@ -14,28 +14,7 @@ async function readAsset(context, path) {
   return response.text();
 }
 
-function decodeBase64Part(value, index) {
-  let text = String(value)
-    .replace(/\s+/g, "")
-    .replace(/[^A-Za-z0-9+/=]/g, "")
-    .replace(/=/g, "");
-
-  if (!text.length) {
-    throw new Error(`題庫分段 ${index + 1} 為空`);
-  }
-  if (text.length % 4 === 1) {
-    throw new Error(`題庫分段 ${index + 1} 的 Base64 長度不正確`);
-  }
-
-  text += "=".repeat((4 - (text.length % 4)) % 4);
-
-  let binary;
-  try {
-    binary = atob(text);
-  } catch (error) {
-    throw new Error(`題庫分段 ${index + 1} 無法解碼：${error?.message || error}`);
-  }
-
+function toBytes(binary) {
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) {
     bytes[i] = binary.charCodeAt(i);
@@ -43,23 +22,41 @@ function decodeBase64Part(value, index) {
   return bytes;
 }
 
-function joinBytes(parts) {
-  const total = parts.reduce((sum, part) => sum + part.byteLength, 0);
-  const output = new Uint8Array(total);
-  let offset = 0;
-  for (const part of parts) {
-    output.set(part, offset);
-    offset += part.byteLength;
+function decodeJoinedBase64(parts) {
+  const attempts = [];
+
+  // 原始資料是同一條 Base64 字串切成 5 個文字檔，應先串接再解碼。
+  attempts.push(parts.join("").replace(/\s+/g, ""));
+
+  // 相容模式：移除非 Base64 字元與分段中可能殘留的 padding，
+  // 最後只在整條字串尾端重新補上合法 padding。
+  let normalized = parts
+    .join("")
+    .replace(/\s+/g, "")
+    .replace(/[^A-Za-z0-9+/=]/g, "")
+    .replace(/=/g, "");
+
+  if (normalized.length % 4 !== 1) {
+    normalized += "=".repeat((4 - (normalized.length % 4)) % 4);
+    attempts.push(normalized);
   }
-  return output;
+
+  const errors = [];
+  for (const candidate of attempts) {
+    try {
+      const binary = atob(candidate);
+      if (binary.length) return toBytes(binary);
+    } catch (error) {
+      errors.push(String(error?.message || error));
+    }
+  }
+
+  throw new Error(`完整題庫 Base64 無法解碼：${errors.join(" | ") || "資料長度不正確"}`);
 }
 
 async function loadPayload(context) {
-  // 每個 payload2/*.txt 都是可獨立解碼的 Base64 區塊；
-  // 區塊末端可能含有 padding，因此不可先直接串接文字再呼叫 atob()。
-  const texts = await Promise.all(PART_PATHS.map((path) => readAsset(context, path)));
-  const decodedParts = texts.map((text, index) => decodeBase64Part(text, index));
-  const payload = joinBytes(decodedParts);
+  const parts = await Promise.all(PART_PATHS.map((path) => readAsset(context, path)));
+  const payload = decodeJoinedBase64(parts);
 
   if (!payload.byteLength) {
     throw new Error("題庫壓縮資料為空");
