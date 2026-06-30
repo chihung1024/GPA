@@ -1,0 +1,17 @@
+files=000.txt,001.txt
+file_count=2
+000.txt: raw=12000 clean=12000 nopad=12000 mod=0 eq=0
+001.txt: raw=12000 clean=12000 nopad=12000 mod=0 eq=0
+joined: clean=24000 nopad=24000 mod=0 eq=0
+joined_candidates=[(0, 18000, '28b52ffda405d29f'), (1, 17999, '28b52ffda405d29f'), (2, 17998, '28b52ffda405d29f'), (4, 17997, '28b52ffda405d29f'), (5, 17996, '28b52ffda405d29f'), (6, 17995, '28b52ffda405d29f'), (8, 17994, '28b52ffda405d29f'), (9, 17993, '28b52ffda405d29f'), (10, 17992, '28b52ffda405d29f'), (12, 17991, '28b52ffda405d29f')]
+per_part_selected=[('000.txt', 0, 9000, '28b52ffd'), ('001.txt', 0, 9000, '23e6d838')]
+candidate 0: trim=0 len=18000 magic=28b52ffda405d29f test=1 stderr=/tmp/quiz-0.zst : Read error (39) : premature end
+candidate 1: trim=1 len=17999 magic=28b52ffda405d29f test=1 stderr=/tmp/quiz-1.zst : Read error (39) : premature end
+candidate 2: trim=2 len=17998 magic=28b52ffda405d29f test=1 stderr=/tmp/quiz-2.zst : Read error (39) : premature end
+candidate 3: trim=4 len=17997 magic=28b52ffda405d29f test=1 stderr=/tmp/quiz-3.zst : Read error (39) : premature end
+candidate 4: trim=5 len=17996 magic=28b52ffda405d29f test=1 stderr=/tmp/quiz-4.zst : Read error (39) : premature end
+candidate 5: trim=6 len=17995 magic=28b52ffda405d29f test=1 stderr=/tmp/quiz-5.zst : Read error (39) : premature end
+candidate 6: trim=8 len=17994 magic=28b52ffda405d29f test=1 stderr=/tmp/quiz-6.zst : Read error (39) : premature end
+candidate 7: trim=9 len=17993 magic=28b52ffda405d29f test=1 stderr=/tmp/quiz-7.zst : Read error (39) : premature end
+candidate 8: trim=10 len=17992 magic=28b52ffda405d29f test=1 stderr=/tmp/quiz-8.zst : Read error (39) : premature end
+candidate 9: trim=12 len=17991 magic=28b52ffda405d29f test=1 stderr=/tmp/quiz-9.zst : Read error (39) : premature end
