@@ -1,0 +1,43 @@
+name: Rebuild static quiz
+
+on:
+  push:
+    paths:
+      - .github/workflows/rebuild-static.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Rebuild index.html from stored payload
+        run: |
+          cat payload/*.txt | tr -d '\r\n\t ' | base64 --decode > /tmp/quiz.zst
+          zstd --decompress --force /tmp/quiz.zst -o index.html
+          rm -rf functions
+          rm -f _routes.json
+          cat > _headers <<'EOF'
+          /
+            Cache-Control: no-cache, no-store, must-revalidate
+          /index.html
+            Cache-Control: no-cache, no-store, must-revalidate
+          EOF
+
+      - name: Commit static site
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A index.html functions _routes.json _headers
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "Publish self-contained static procurement quiz"
+            git push origin main
+          fi
