@@ -29,14 +29,21 @@ jobs:
           import re
           import subprocess
 
+          diagnostics = []
           files = sorted(Path('payload').glob('*.txt'))
-          if not files:
-              raise SystemExit('No payload files found')
-
+          diagnostics.append('files=' + ','.join(p.name for p in files))
+          diagnostics.append('file_count=' + str(len(files)))
           parts = [p.read_text(encoding='utf-8') for p in files]
 
           def clean(value):
               return re.sub(r'[^A-Za-z0-9+/=]', '', value)
+
+          for p, text in zip(files, parts):
+              c = clean(text)
+              diagnostics.append(f'{p.name}: raw={len(text)} clean={len(c)} nopad={len(c.replace("=", ""))} mod={len(c.replace("=", "")) % 4} eq={c.count("=")}')
+
+          joined_clean = clean(''.join(parts))
+          diagnostics.append(f'joined: clean={len(joined_clean)} nopad={len(joined_clean.replace("=", ""))} mod={len(joined_clean.replace("=", "")) % 4} eq={joined_clean.count("=")}')
 
           def decode_stream(value, max_trim=12):
               raw = clean(value).replace('=', '')
@@ -48,47 +55,54 @@ jobs:
                   text += '=' * ((4 - len(text) % 4) % 4)
                   try:
                       data = base64.b64decode(text, validate=True)
-                  except Exception:
+                  except Exception as exc:
+                      diagnostics.append(f'decode trim={trim} failed: {exc}')
                       continue
-                  if data:
-                      results.append(data)
+                  results.append((trim, data))
               return results
 
-          candidates = []
-          candidates.extend(decode_stream(''.join(parts)))
+          candidates = decode_stream(''.join(parts))
+          diagnostics.append('joined_candidates=' + str([(t, len(d), d[:8].hex()) for t, d in candidates]))
 
           try:
               decoded_parts = []
-              for part in parts:
+              selected = []
+              for p, part in zip(files, parts):
                   options = decode_stream(part, max_trim=4)
                   if not options:
-                      raise ValueError('part decode failed')
-                  decoded_parts.append(options[0])
-              candidates.append(b''.join(decoded_parts))
+                      raise ValueError(f'{p.name} has no candidate')
+                  trim, data = options[0]
+                  selected.append((p.name, trim, len(data), data[:4].hex()))
+                  decoded_parts.append(data)
+              per_part = b''.join(decoded_parts)
+              diagnostics.append('per_part_selected=' + str(selected))
+              candidates.append((-1, per_part))
           except Exception as exc:
-              print('Per-part candidate unavailable:', exc)
+              diagnostics.append('per_part_error=' + repr(exc))
 
+          success = False
           seen = set()
-          for number, data in enumerate(candidates):
+          for number, (trim, data) in enumerate(candidates):
               signature = (len(data), data[:16], data[-16:])
               if signature in seen:
                   continue
               seen.add(signature)
               source = Path(f'/tmp/quiz-{number}.zst')
               source.write_bytes(data)
-              test = subprocess.run(['zstd', '--test', '--quiet', str(source)])
+              test = subprocess.run(['zstd', '--test', str(source)], capture_output=True, text=True)
+              diagnostics.append(f'candidate {number}: trim={trim} len={len(data)} magic={data[:8].hex()} test={test.returncode} stderr={test.stderr.strip()}')
               if test.returncode != 0:
                   continue
-              subprocess.run(
-                  ['zstd', '--decompress', '--force', str(source), '-o', 'index.html'],
-                  check=True,
-              )
+              subprocess.run(['zstd', '--decompress', '--force', str(source), '-o', 'index.html'], check=True)
               html = Path('index.html').read_bytes()
+              diagnostics.append(f'html_len={len(html)} html_prefix={html[:40]!r}')
               if b'<html' not in html[:1000].lower() and b'<!doctype html' not in html[:1000].lower():
                   continue
-              print(f'Decoded {len(files)} payload files to {len(html):,} HTML bytes')
+              success = True
               break
-          else:
+
+          Path('BUILD_DIAGNOSTIC.txt').write_text('\n'.join(diagnostics) + '\n', encoding='utf-8')
+          if not success:
               raise SystemExit('No valid Zstandard payload candidate found')
           PY
 
@@ -96,15 +110,16 @@ jobs:
           rm -f _routes.json
           printf '/\n  Cache-Control: no-cache, no-store, must-revalidate\n/index.html\n  Cache-Control: no-cache, no-store, must-revalidate\n' > _headers
 
-      - name: Commit static site
+      - name: Commit static site or diagnostics
+        if: always()
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A index.html functions _routes.json _headers
+          git add -A index.html functions _routes.json _headers BUILD_DIAGNOSTIC.txt
           if git diff --cached --quiet; then
             echo "No changes"
           else
-            git commit -m "Publish self-contained static procurement quiz"
+            git commit -m "Record static quiz rebuild result"
             git push origin main
           fi
