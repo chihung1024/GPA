@@ -1,0 +1,87 @@
+name: Build local gzip quiz payload
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-local-gzip.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Rebuild gzip payload from existing Brotli payload
+        run: |
+          python -m pip install --disable-pip-version-check brotli
+          python <<'PY'
+          from pathlib import Path
+          import base64, brotli, gzip, hashlib, json, re
+
+          parts = []
+          for i in range(5):
+              p = Path(f'payload2/{i}.txt')
+              if not p.exists():
+                  raise SystemExit(f'missing {p}')
+              parts.append(p.read_text(encoding='utf-8'))
+
+          b64 = ''.join(parts)
+          b64 = re.sub(r'\s+', '', b64).replace('-', '+').replace('_', '/')
+          b64 = re.sub(r'[^A-Za-z0-9+/=]', '', b64).rstrip('=')
+          if len(b64) % 4 == 1:
+              raise SystemExit(f'invalid base64 length: {len(b64)}')
+          b64 += '=' * ((4 - len(b64) % 4) % 4)
+
+          compressed = base64.b64decode(b64, validate=True)
+          html = brotli.decompress(compressed)
+          text_head = html[:500].decode('utf-8', errors='replace').lower()
+          if '<!doctype html>' not in text_head:
+              raise SystemExit('decompressed payload is not HTML')
+          if b'const QUESTION_BANK =' not in html or b'3,599' not in html:
+              raise SystemExit('quiz payload validation failed')
+
+          gz = gzip.compress(html, compresslevel=9, mtime=0)
+          encoded = base64.b64encode(gz).decode('ascii')
+          out = Path('payload3')
+          out.mkdir(exist_ok=True)
+          for old in out.glob('*.txt'):
+              old.unlink()
+          chunk_size = 800_000
+          chunks = [encoded[i:i+chunk_size] for i in range(0, len(encoded), chunk_size)]
+          for i, chunk in enumerate(chunks):
+              (out / f'{i}.txt').write_text(chunk, encoding='ascii')
+
+          manifest = {
+              'source_bytes': len(html),
+              'gzip_bytes': len(gz),
+              'base64_chars': len(encoded),
+              'parts': len(chunks),
+              'part_sizes': [len(x) for x in chunks],
+              'source_sha256': hashlib.sha256(html).hexdigest(),
+              'gzip_sha256': hashlib.sha256(gz).hexdigest(),
+          }
+          (out / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding='utf-8')
+          print(json.dumps(manifest, ensure_ascii=False, indent=2))
+          if len(chunks) != 5:
+              raise SystemExit(f'unexpected part count: {len(chunks)}')
+          PY
+      - name: Commit generated payload
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add payload3
+          if git diff --cached --quiet; then
+            echo 'No changes to commit'
+          else
+            git commit -m 'Build local gzip quiz payload'
+            git push
+          fi
