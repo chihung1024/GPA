@@ -1,0 +1,27 @@
+{
+  "status": "ok",
+  "input_files": [
+    {
+      "name": "000.txt",
+      "chars": 12000,
+      "sha256": "5052e520919497f7b18c0c98a29820b7c9d67e308240b9fe76e220936152a118"
+    },
+    {
+      "name": "001.txt",
+      "chars": 12000,
+      "sha256": "9fe4d155e3abf719c102d0395c3285c05a9c89c05a954490e5ab7c41fb058dd0"
+    }
+  ],
+  "decode_mode": "joined_base64",
+  "packed_bytes": 18000,
+  "packed_magic": "28b52ffda405d29f029c83008a683c16",
+  "parts": 1,
+  "part_sizes": [
+    22692
+  ],
+  "base64_chars": 22692,
+  "source_bytes": 131072,
+  "source_sha256": "fb5a54ebeb9d705bce03c6a06e1fdb5b8ebe9694ac903f1d54170c396c10ea97",
+  "gzip_bytes": 17018,
+  "gzip_sha256": "7c192cbc8fd90a3397c60562a48ecca667e43d94506450809a52e5d154dc740a"
+}
