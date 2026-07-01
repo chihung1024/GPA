@@ -1,4 +1,4 @@
-name: Rebuild static quiz
+name: Publish compact static quiz
 on:
   push:
     paths: [.github/workflows/rebuild-static.yml]
@@ -12,43 +12,73 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - run: python3 -m pip install brotli
-      - name: Produce static index
+      - run: python3 -m pip install --disable-pip-version-check brotli zstandard
+      - name: Build index and compact data
+        shell: bash
         run: |
           python3 <<'PY'
           from pathlib import Path
-          import base64, brotli, re
-          files=sorted(Path('payload2').glob('*.txt'))
-          parts=[p.read_text() for p in files]
-          variants=[]
-          joined=re.sub(r'\s+','',''.join(parts))
-          try: variants.append(('joined',base64.b64decode(joined,validate=True)))
-          except Exception as e: print('joined',e)
-          try:
-              out=[]
-              for part in parts:
-                  s=re.sub(r'[^A-Za-z0-9+/]','',part)
-                  s+='='*((4-len(s)%4)%4)
-                  out.append(base64.b64decode(s,validate=True))
-              variants.append(('parts',b''.join(out)))
-          except Exception as e: print('parts',e)
-          for name,data in variants:
-              try:
-                  html=brotli.decompress(data)
-                  if b'<html' in html[:2000].lower() or b'<!doctype html' in html[:2000].lower():
-                      Path('index.html').write_bytes(html)
-                      Path('BUILD_SUCCESS.txt').write_text(f'{name}\n{len(html)}\n')
-                      break
-              except Exception as e: print(name,e)
-          else: raise SystemExit('no valid payload')
+          import base64, brotli, json, re, zstandard as zstd
+
+          def payload(folder):
+              files=sorted(Path(folder).glob('*.txt'))
+              if not files: raise SystemExit(f'no files in {folder}')
+              text=''.join(p.read_text(encoding='utf-8') for p in files)
+              text=re.sub(r'[^A-Za-z0-9+/=]','',text).rstrip('=')
+              text+='='*((4-len(text)%4)%4)
+              return base64.b64decode(text)
+
+          ui=brotli.decompress(payload('payload2'))
+          if b'fetch("data.json"' not in ui: raise SystemExit('invalid compact UI')
+          Path('index.html').write_bytes(ui)
+
+          full=zstd.ZstdDecompressor().decompress(payload('payload'),max_output_size=100_000_000).decode('utf-8')
+          m=re.search(r'const QUESTION_BANK = (\[.*?\]);\s*const CHAPTER_STATS',full,re.S)
+          if not m: raise SystemExit('question bank not found')
+          source=json.loads(m.group(1))
+
+          chapters=[]; chapter_ids={}; notes=[]; note_ids={}; refs=[]; ref_ids={}; refsets=[]; refset_ids={}; questions=[]
+          def note_id(text):
+              text=text or ''
+              if text not in note_ids: note_ids[text]=len(notes); notes.append(text)
+              return note_ids[text]
+          def ref_id(item):
+              key=(item.get('law',''),item.get('article',''),item.get('url',''))
+              if key not in ref_ids:
+                  ref_ids[key]=len(refs); refs.append({'law':key[0],'article':key[1],'url':key[2]})
+              return ref_ids[key]
+          def refset_id(items):
+              key=tuple(ref_id(x) for x in items)
+              if key not in refset_ids: refset_ids[key]=len(refsets); refsets.append(list(key))
+              return refset_ids[key]
+
+          for q in source:
+              chapter=q['chapter']
+              if chapter not in chapter_ids: chapter_ids[chapter]=len(chapters); chapters.append(chapter)
+              analyses=q.get('choiceAnalyses') or []
+              if q['type']=='mc':
+                  nids=[]; rids=[]; option_notes=q.get('optionNotes') or []
+                  for i,_ in enumerate(q.get('options') or []):
+                      a=analyses[i] if i<len(analyses) else {}
+                      text=a.get('why') or (option_notes[i] if i<len(option_notes) else '')
+                      nids.append(note_id(text)); rids.append(refset_id(a.get('legalRefs') or []))
+                  questions.append([chapter_ids[chapter],1,q['number'],q['answer'],q['stem'],q.get('options') or [],nids,rids])
+              else:
+                  rids=[refset_id((analyses[i] if i<len(analyses) else {}).get('legalRefs') or []) for i in range(2)]
+                  questions.append([chapter_ids[chapter],0,q['number'],q['answer'],q['stem'],[],[],rids])
+
+          data={'c':chapters,'q':questions,'d':{'note':notes,'ref':refs,'refset':refsets}}
+          Path('data.json').write_text(json.dumps(data,ensure_ascii=False,separators=(',',':')),encoding='utf-8')
+          if len(questions)!=3599: raise SystemExit(f'wrong question count: {len(questions)}')
+          print(f'questions={len(questions)} data_bytes={Path("data.json").stat().st_size}')
           PY
           rm -rf functions
-          rm -f _routes.json
-          printf '/\n  Cache-Control: no-cache, no-store, must-revalidate\n' > _headers
-      - name: Commit
+          rm -f _routes.json compact-test.js BUILD_DIAGNOSTIC.txt BUILD_SUCCESS.txt
+          printf '/index.html\n  Cache-Control: no-cache, no-store, must-revalidate\n/data.json\n  Cache-Control: public, max-age=3600\n' > _headers
+      - name: Commit generated site
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add -A
-          git commit -m 'Publish verified static quiz' || exit 0
+          git commit -m 'Publish compact 3599-question static quiz' || exit 0
           git push origin main
