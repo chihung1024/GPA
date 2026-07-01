@@ -199,8 +199,106 @@
     .legal-ref-list{display:grid;gap:.65rem;margin-top:.75rem}.legal-ref{border-left:4px solid var(--primary);background:var(--surface-2);padding:.75rem .9rem;border-radius:.55rem}.legal-ref-title{font-weight:750;margin-bottom:.25rem}.legal-ref-text{line-height:1.65}.legal-ref a{font-weight:700} .analysis-label{font-weight:750;color:var(--primary-strong)}
 
     .legal-ref-details{margin-top:.8rem;border-top:1px dashed var(--line);padding-top:.7rem}.legal-ref-details summary{cursor:pointer;font-weight:750;color:var(--primary-strong)}.legal-ref-list{display:grid;gap:.7rem;margin-top:.7rem}.legal-ref{border-left:4px solid var(--primary);background:var(--surface-2);padding:.78rem .9rem;border-radius:.55rem}.legal-ref-title{font-weight:800;margin-bottom:.3rem}.legal-ref-text{line-height:1.7;white-space:pre-wrap}.legal-ref-link{margin-top:.4rem}.legal-ref-link a{font-weight:750}
+
+
+    body.has-sticky-actions { padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px)); }
+    .quiz-head { gap: 10px; }
+    .stats-grid { margin: 12px 0 18px; }
+    .stat { min-height: 82px; }
+    .feedback.hidden { display: none !important; }
+    .feedback { margin-top: 16px; }
+    .feedback-brief {
+      display: grid;
+      gap: 6px;
+      align-items: start;
+    }
+    .feedback-brief strong { margin: 0; font-size: 1.05rem; }
+    .feedback-answer { font-weight: 750; }
+    .explain-panel {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--surface) 86%, transparent);
+      padding: 12px 14px;
+    }
+    .explain-panel > summary {
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .explain-panel > summary::-webkit-details-marker { display: none; }
+    .explain-panel > summary::after {
+      content: '＋';
+      display: inline-grid;
+      place-items: center;
+      width: 1.7rem;
+      height: 1.7rem;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--surface-2);
+      flex: 0 0 auto;
+    }
+    .explain-panel[open] > summary::after { content: '－'; }
+    .explain-panel-body {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--line);
+    }
+    .quiz-actions {
+      position: sticky;
+      bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+      z-index: 30;
+      margin-top: 16px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .quiz-actions-main {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .quiz-actions-main .btn { flex: 1 1 auto; }
+    #toggleExplainBtn { min-width: 130px; }
+    #nextBtn { min-width: 170px; }
+    .quiz-actions-hint {
+      display: block;
+      margin-top: 8px;
+      font-size: .83rem;
+      line-height: 1.45;
+    }
+    @media (max-width: 680px) {
+      body.has-sticky-actions { padding-bottom: calc(132px + env(safe-area-inset-bottom, 0px)); }
+      .stats-grid { gap: 8px; margin: 10px 0 14px; }
+      .stat { min-height: 70px; padding: 10px; }
+      .question-card { padding-top: 18px; }
+      .question-text { margin-bottom: 16px; }
+      .answer-btn { padding: 13px 14px; }
+      .quiz-actions {
+        padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+        border-radius: 14px;
+      }
+      .quiz-actions-main {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      }
+      .quiz-actions-hint {
+        font-size: .78rem;
+        margin-top: 7px;
+      }
+      #toggleExplainBtn,
+      #nextBtn { min-width: 0; }
+    }
+
 </style>
-<script type="text/javascript" nonce="469bd60940f547eb806fa0d30e4" src="//local.adguard.org?ts=1782903531968&amp;type=content-script&amp;dmn=chatgpt.com&amp;url=https%3A%2F%2Fchatgpt.com%2Fbackend-api%2Festuary%2Fcontent%3Fid%3Dfile_00000000ba4c72099fd729dd2fc6f304%26fn%3Dindex%25282%2529.html%26cd%3Dattachment%26ts%3D495251%26p%3Dfs%26cid%3D1%26sig%3D5d7a5e25fcd7f412a4e880010748d78b7e4a8f56a05e0be3e9256a83dd18f48e%26v%3D0&amp;app=chrome.exe&amp;css=2&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1&amp;stealth=1&amp;st-dnt"></script><script type="text/javascript" nonce="469bd60940f547eb806fa0d30e4" src="//local.adguard.org?ts=1782903531968&amp;name=AdGuard%20Assistant%20%28Beta%29&amp;name=AdGuard%20Extra%20%28Beta%29&amp;name=AdGuard%20Popup%20Blocker%20%28Beta%29&amp;name=Web%20of%20Trust%20%28Beta%29&amp;type=user-script"></script></head>
+<script type="text/javascript" nonce="469bd60940f547eb806fa0d30e4" src="//local.adguard.org?ts=1782903531968&amp;type=content-script&amp;dmn=chatgpt.com&amp;url=https%3A%2F%2Fchatgpt.com%2Fbackend-api%2Festuary%2Fcontent%3Fid%3Dfile_00000000d6287209b2f70991892ba0ed%26ts%3D495251%26p%3Dfs%26cid%3D1%26sig%3D99ba717f7c98a5c1b0f56c6530ebc8460fb1a03e05e74b17d6a60edf1f026197%26v%3D0&amp;app=chrome.exe&amp;css=2&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1&amp;stealth=1&amp;st-dnt"></script><script type="text/javascript" nonce="469bd60940f547eb806fa0d30e4" src="//local.adguard.org?ts=1782903531968&amp;name=AdGuard%20Assistant%20%28Beta%29&amp;name=AdGuard%20Extra%20%28Beta%29&amp;name=AdGuard%20Popup%20Blocker%20%28Beta%29&amp;name=Web%20of%20Trust%20%28Beta%29&amp;type=user-script"></script></head>
 <body>
 <header>
   <div class="shell">
@@ -260,8 +358,11 @@
       <div id="answers" class="answers"></div>
       <div id="feedback" class="feedback hidden"></div>
       <div class="quiz-actions">
-        <button id="nextBtn" class="btn primary large" type="button" disabled>下一題</button>
-        <span class="muted">快捷鍵：1–4／O／X；作答後按 Enter 進入下一題</span>
+        <div class="quiz-actions-main">
+          <button id="toggleExplainBtn" class="btn" type="button" disabled aria-expanded="false">看解析</button>
+          <button id="nextBtn" class="btn primary large" type="button" disabled>下一題</button>
+        </div>
+        <span class="muted quiz-actions-hint">快速刷題模式：作答後固定顯示「下一題」，解析預設縮起；需要時再按「看解析」。快捷鍵：1–4／O／X；作答後按 Enter 進入下一題。</span>
       </div>
     </article>
   </section>
@@ -327,6 +428,7 @@ let deckIndex = 0;
 let cycle = 1;
 let currentQuestion = null;
 let currentAnswered = false;
+let explanationExpanded = false;
 let stats = { answered: 0, correct: 0 };
 let lastSetup = null;
 
@@ -390,6 +492,7 @@ function setView(name) {
   setupView.classList.toggle('hidden', name !== 'setup');
   quizView.classList.toggle('hidden', name !== 'quiz');
   summaryView.classList.toggle('hidden', name !== 'summary');
+  document.body.classList.toggle('has-sticky-actions', name === 'quiz');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -447,9 +550,11 @@ function showNextQuestion() {
 
   currentQuestion = deck[deckIndex++];
   currentAnswered = false;
+  explanationExpanded = false;
   $('feedback').className = 'feedback hidden';
   $('feedback').innerHTML = '';
   $('nextBtn').disabled = true;
+  syncExplainToggle();
 
   $('cycleBadge').textContent = `第 ${cycle} 輪`;
   $('roundProgressBadge').textContent = `本輪 ${deckIndex.toLocaleString('zh-TW')} / ${deck.length.toLocaleString('zh-TW')}`;
@@ -483,6 +588,7 @@ function addAnswerButton(value, label) {
 function submitAnswer(value) {
   if (currentAnswered) return;
   currentAnswered = true;
+  explanationExpanded = false;
   const isCorrect = value === currentQuestion.answer;
   stats.answered += 1;
   if (isCorrect) stats.correct += 1;
@@ -498,21 +604,53 @@ function submitAnswer(value) {
     : `${currentQuestion.answer}（${currentQuestion.answer === 'O' ? '正確' : '錯誤'}）`;
   const feedback = $('feedback');
   feedback.className = `feedback ${isCorrect ? 'correct' : 'wrong'}`;
-  feedback.innerHTML = `<strong>${isCorrect ? '答對' : '答錯'}</strong>
-    <div class="feedback-answer">正確答案：${escapeHtml(correctText)}</div>
-    <div class="explanation-block">
-      <h4>答案結論</h4>
-      <p>${escapeHtml(currentQuestion.explanation || '本題依題庫答案判定。')}</p>
-      <div class="analysis-card"><b>法規定位</b>${escapeHtml(currentQuestion.legalBasis || '依政府採購法及相關規定判斷。')}</div>
-      <div class="analysis-card"><b>實務上為什麼</b>${escapeHtml(currentQuestion.practicalReason || '採購程序須兼顧公平、透明、權責與公帑效益。')}</div>
-      ${currentQuestion.choiceAnalyses?.length ? `<div class="analysis-card"><b>每一個作答選項的法規逐項詳解</b><div class="choice-analysis-list">${currentQuestion.choiceAnalyses.map((a, idx) => { const label = currentQuestion.type === 'mc' ? String(idx + 1) : (idx === 0 ? 'O' : 'X'); const answerKey = currentQuestion.type === 'mc' ? label === currentQuestion.answer : label === currentQuestion.answer; return `<section class="choice-analysis-item ${answerKey ? 'answer-key' : ''}"><div class="choice-analysis-head"><span class="choice-badge">${label}</span><span class="choice-verdict">${escapeHtml(a.verdict || '')}${answerKey ? '（本題答案）' : ''}</span></div><div class="choice-analysis-row"><b>為什麼：</b>${escapeHtml(a.why || '')}</div>${a.error ? `<div class="choice-analysis-row"><b>錯在哪：</b>${escapeHtml(a.error)}</div>` : ''}<div class="choice-analysis-row"><b>正確作法：</b>${escapeHtml(a.correctRule || '')}</div><div class="choice-analysis-row"><b>實務理由：</b>${escapeHtml(a.practice || '')}</div><div class="choice-analysis-row"><b>易錯提醒：</b>${escapeHtml(a.trap || '')}</div><div class="choice-source">法規依據：${escapeHtml(a.basis || currentQuestion.legalBasis || '政府採購法及相關規定')}</div>${renderLegalRefs(a.legalRefs || [])}</section>`; }).join('')}</div></div>` : ''}
-      <div class="memory-tip"><b>記憶規則：</b>${escapeHtml(currentQuestion.memoryTip || '把答案整理成條件、程序與法律效果。')}</div>
-      ${currentQuestion.termTip ? `<div class="term-tip"><b>名詞小抄：</b>${escapeHtml(currentQuestion.termTip)}</div>` : ''}
-      <div class="explanation-disclaimer">本解析以行政院公共工程委員會主管之《政府採購法》、《政府採購法施行細則》、相關現行子法及工程會契約範本為依據，逐項說明成立要件、錯誤所在、正確規則與實務作法。法規來源核對日期：2026-06-29。題庫答案仍以附件為準；實際案件應以招標當時有效法規、工程會函釋及契約文件為準。</div>
-    </div>`;
+  feedback.innerHTML = `<div class="feedback-brief"><strong>${isCorrect ? '答對' : '答錯'}</strong><div class="feedback-answer">正確答案：${escapeHtml(correctText)}</div></div>
+    <details id="feedbackDetails" class="explain-panel">
+      <summary>展開完整解析、法規定位、逐選項詳解與記憶重點</summary>
+      <div class="explain-panel-body">
+        <div class="explanation-block">
+          <h4>答案結論</h4>
+          <p>${escapeHtml(currentQuestion.explanation || '本題依題庫答案判定。')}</p>
+          <div class="analysis-card"><b>法規定位</b>${escapeHtml(currentQuestion.legalBasis || '依政府採購法及相關規定判斷。')}</div>
+          <div class="analysis-card"><b>實務上為什麼</b>${escapeHtml(currentQuestion.practicalReason || '採購程序須兼顧公平、透明、權責與公帑效益。')}</div>
+          ${currentQuestion.choiceAnalyses?.length ? `<div class="analysis-card"><b>每一個作答選項的法規逐項詳解</b><div class="choice-analysis-list">${currentQuestion.choiceAnalyses.map((a, idx) => { const label = currentQuestion.type === 'mc' ? String(idx + 1) : (idx === 0 ? 'O' : 'X'); const answerKey = currentQuestion.type === 'mc' ? label === currentQuestion.answer : label === currentQuestion.answer; return `<section class="choice-analysis-item ${answerKey ? 'answer-key' : ''}"><div class="choice-analysis-head"><span class="choice-badge">${label}</span><span class="choice-verdict">${escapeHtml(a.verdict || '')}${answerKey ? '（本題答案）' : ''}</span></div><div class="choice-analysis-row"><b>為什麼：</b>${escapeHtml(a.why || '')}</div>${a.error ? `<div class="choice-analysis-row"><b>錯在哪：</b>${escapeHtml(a.error)}</div>` : ''}<div class="choice-analysis-row"><b>正確作法：</b>${escapeHtml(a.correctRule || '')}</div><div class="choice-analysis-row"><b>實務理由：</b>${escapeHtml(a.practice || '')}</div><div class="choice-analysis-row"><b>易錯提醒：</b>${escapeHtml(a.trap || '')}</div><div class="choice-source">法規依據：${escapeHtml(a.basis || currentQuestion.legalBasis || '政府採購法及相關規定')}</div>${renderLegalRefs(a.legalRefs || [])}</section>`; }).join('')}</div></div>` : ''}
+          <div class="memory-tip"><b>記憶規則：</b>${escapeHtml(currentQuestion.memoryTip || '把答案整理成條件、程序與法律效果。')}</div>
+          ${currentQuestion.termTip ? `<div class="term-tip"><b>名詞小抄：</b>${escapeHtml(currentQuestion.termTip)}</div>` : ''}
+          <div class="explanation-disclaimer">本解析以行政院公共工程委員會主管之《政府採購法》、《政府採購法施行細則》、相關現行子法及工程會契約範本為依據，逐項說明成立要件、錯誤所在、正確規則與實務作法。法規來源核對日期：2026-06-29。題庫答案仍以附件為準；實際案件應以招標當時有效法規、工程會函釋及契約文件為準。</div>
+        </div>
+      </div>
+    </details>`;
+  $('feedbackDetails')?.addEventListener('toggle', () => {
+    explanationExpanded = !!$('feedbackDetails')?.open;
+    syncExplainToggle();
+  });
   $('nextBtn').disabled = false;
+  syncExplainToggle();
   updateStats();
   $('nextBtn').focus({ preventScroll: true });
+}
+
+function syncExplainToggle() {
+  const btn = $('toggleExplainBtn');
+  const details = $('feedbackDetails');
+  const expanded = !!details?.open;
+  btn.disabled = !details;
+  btn.textContent = details ? (expanded ? '收合解析' : '看解析') : '看解析';
+  btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+}
+
+function setExplainExpanded(expanded, { scrollIntoView = false } = {}) {
+  const details = $('feedbackDetails');
+  explanationExpanded = !!expanded;
+  if (!details) {
+    syncExplainToggle();
+    return;
+  }
+  details.open = explanationExpanded;
+  syncExplainToggle();
+  if (explanationExpanded && scrollIntoView) {
+    details.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
 }
 
 function updateStats() {
@@ -550,6 +688,11 @@ $('clearAllBtn').addEventListener('click', () => {
 typeMc.addEventListener('change', updateSelectedCount);
 typeTf.addEventListener('change', updateSelectedCount);
 $('startBtn').addEventListener('click', () => startQuiz(false));
+$('toggleExplainBtn').addEventListener('click', () => {
+  const details = $('feedbackDetails');
+  if (!details) return;
+  setExplainExpanded(!details.open, { scrollIntoView: !details.open });
+});
 $('nextBtn').addEventListener('click', showNextQuestion);
 $('endBtn').addEventListener('click', endQuiz);
 $('restartSameBtn').addEventListener('click', () => startQuiz(true));
