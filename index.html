@@ -4,20 +4,30 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f4f7fb">
-<title>採購法隨機題庫</title>
+<title>政府採購法隨機題庫</title>
 <style>
-html,body{height:100%;margin:0;font-family:system-ui,-apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif;background:#f4f7fb;color:#14213d}body{display:grid;place-items:center}main{width:min(620px,calc(100% - 40px));padding:28px;border:1px solid #dbe3ee;border-radius:18px;background:#fff;box-shadow:0 18px 50px rgba(20,33,61,.09);text-align:center}.spinner{width:40px;height:40px;margin:0 auto 18px;border:5px solid #dbe3ee;border-top-color:#2457a7;border-radius:50%;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}h1{font-size:1.3rem;margin:0 0 8px}p{line-height:1.7;margin:0;color:#52657c}a{display:inline-block;margin-top:16px;color:#2457a7;font-weight:700}
+:root{font-family:system-ui,-apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif;color:#14213d;background:#f4f7fb}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px}main{width:min(680px,100%);padding:30px;border:1px solid #dbe3ee;border-radius:18px;background:#fff;box-shadow:0 18px 50px rgba(20,33,61,.09);text-align:center}.spinner{width:44px;height:44px;margin:0 auto 18px;border:5px solid #dbe3ee;border-top-color:#2457a7;border-radius:50%;animation:spin .75s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}h1{font-size:1.35rem;margin:0 0 10px}p{line-height:1.7;margin:0;color:#52657c}progress{width:100%;height:12px;margin:22px 0 8px}#error{display:none;text-align:left;white-space:pre-wrap;color:#9f1d1d;background:#fff1f1;border:1px solid #efcaca;border-radius:12px;padding:14px;margin-top:18px}button{display:none;margin:16px auto 0;border:0;border-radius:10px;padding:11px 18px;background:#2457a7;color:#fff;font-weight:700;cursor:pointer}
 </style>
-<script>
-location.replace('/quiz-content' + location.search + location.hash);
-</script>
 </head>
 <body>
 <main>
-<div class="spinner" aria-hidden="true"></div>
-<h1>正在開啟採購法題庫</h1>
-<p>題庫由本站直接提供，不再載入外部解壓縮元件。</p>
-<noscript><a href="/quiz-content">開啟題庫</a></noscript>
+<div class="spinner" id="spinner" aria-hidden="true"></div>
+<h1>正在載入完整題庫</h1>
+<p id="status">準備 3,599 題與逐選項法規解析…</p>
+<progress id="progress" value="0" max="5"></progress>
+<div id="error" role="alert"></div>
+<button id="retry" type="button">重新載入</button>
 </main>
+<script type="module">
+const PART_COUNT=5;
+const statusEl=document.getElementById("status"),progressEl=document.getElementById("progress"),errorEl=document.getElementById("error"),retry=document.getElementById("retry"),spinner=document.getElementById("spinner");
+const sleep=()=>new Promise(r=>requestAnimationFrame(r));
+function normalizeBase64(value){return String(value).replace(/\s+/g,"").replace(/[\u200B-\u200D\uFEFF]/g,"").replace(/-/g,"+").replace(/_/g,"/").replace(/[^A-Za-z0-9+/=]/g,"")}
+function decodeBase64(value){let s=normalizeBase64(value).replace(/=+$/g,"");if(s.length%4===1)throw new Error("題庫資料長度不完整");s+="=".repeat((4-s.length%4)%4);const raw=atob(s),out=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)out[i]=raw.charCodeAt(i);return out}
+async function fetchPart(i){const url=new URL(`payload2/${i}.txt`,new URL(".",location.href));const res=await fetch(url,{cache:"force-cache"});if(!res.ok)throw new Error(`題庫資料 ${i+1}/${PART_COUNT} 載入失敗（HTTP ${res.status}）`);const text=await res.text();if(!text.trim())throw new Error(`題庫資料 ${i+1}/${PART_COUNT} 為空`);progressEl.value=i+1;statusEl.textContent=`已載入 ${i+1} / ${PART_COUNT} 份題庫資料`;return text}
+async function boot(){const parts=[];for(let i=0;i<PART_COUNT;i++){parts.push(await fetchPart(i));await sleep()}statusEl.textContent="正在解壓縮並驗證題庫…";await sleep();const module=await import("https://cdn.jsdelivr.net/npm/brotli-dec-wasm@2.3.2/index.js");const brotli=await module.default;const page=new TextDecoder("utf-8").decode(brotli.decompress(decodeBase64(parts.join(""))));if(!/^\s*<!doctype html>/i.test(page)||!page.includes("const QUESTION_BANK =")||!page.includes("政府採購法隨機題庫"))throw new Error("題庫內容驗證失敗，請重新整理後再試。");statusEl.textContent="題庫載入完成，正在開啟…";await sleep();document.open();document.write(page);document.close()}
+boot().catch(err=>{console.error(err);spinner.style.display="none";progressEl.style.display="none";statusEl.textContent="題庫載入失敗";errorEl.style.display="block";errorEl.textContent=String(err&&err.message||err);retry.style.display="block"});
+retry.addEventListener("click",()=>location.reload());
+</script>
 </body>
 </html>
