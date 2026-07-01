@@ -1,0 +1,34 @@
+{
+  "status": "error",
+  "traceback": "Traceback (most recent call last):\n  File \"<stdin>\", line 23, in <module>\n  File \"/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/base64.py\", line 88, in b64decode\n    return binascii.a2b_base64(s, strict_mode=validate)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nbinascii.Error: Excess padding not allowed\n",
+  "data_parts": [
+    "000.txt",
+    "001.txt",
+    "002.txt",
+    "003.txt",
+    "004.txt",
+    "005.txt",
+    "006.txt",
+    "007.txt",
+    "008.txt",
+    "009.txt",
+    "010.txt",
+    "011.txt",
+    "013.txt"
+  ],
+  "data_part_sizes": [
+    4096,
+    8192,
+    16384,
+    16384,
+    16384,
+    16384,
+    16384,
+    16384,
+    16384,
+    16383,
+    6477,
+    13070,
+    2092
+  ]
+}

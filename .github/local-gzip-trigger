@@ -1,0 +1,6 @@
+Rebuild local gzip payload without external CDN.
+Retry with diagnostics: 2026-07-01T04:05Z
+Validate data_parts: 2026-07-01T04:10Z
+Generate from repository Zstandard payload: 2026-07-01T05:00Z
+Retry normalized padding: 2026-07-01T05:10Z
+Run robust builder: 2026-07-01T05:30Z
