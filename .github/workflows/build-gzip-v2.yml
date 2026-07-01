@@ -40,7 +40,9 @@ jobs:
               raise SystemExit('payload files are missing')
           text = ''.join(path.read_text(encoding='utf-8') for path in files)
           text = re.sub(r'\s+', '', text).replace('-', '+').replace('_', '/')
-          text = re.sub(r'[^A-Za-z0-9+/=]', '', text).rstrip('=')
+          text = re.sub(r'[^A-Za-z0-9+/=]', '', text).replace('=', '')
+          if len(text) % 4 == 1:
+              raise SystemExit(f'invalid base64 length: {len(text)}')
           text += '=' * ((4 - len(text) % 4) % 4)
           packed = base64.b64decode(text, validate=True)
           html = zstd.ZstdDecompressor().decompress(packed, max_output_size=100_000_000)
