@@ -1,5 +1,5 @@
 {
   "version": 1,
-  "include": ["/", "/quiz-content"],
+  "include": ["/quiz-content"],
   "exclude": ["/payload2/*"]
 }
