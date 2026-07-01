@@ -1,0 +1,79 @@
+name: Build gzip quiz data v2
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+    paths:
+      - '.github/local-gzip-trigger-v2'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Convert repository payload to gzip
+        run: |
+          python -m pip install zstandard
+          python <<'PY'
+          from pathlib import Path
+          import base64, gzip, hashlib, json, re
+          import zstandard as zstd
+
+          def sort_key(path):
+              try:
+                  return int(path.stem)
+              except ValueError:
+                  return path.name
+
+          files = sorted(Path('payload').glob('*.txt'), key=sort_key)
+          if not files:
+              raise SystemExit('payload files are missing')
+          text = ''.join(path.read_text(encoding='utf-8') for path in files)
+          text = re.sub(r'\s+', '', text).replace('-', '+').replace('_', '/')
+          text = re.sub(r'[^A-Za-z0-9+/=]', '', text).rstrip('=')
+          text += '=' * ((4 - len(text) % 4) % 4)
+          packed = base64.b64decode(text, validate=True)
+          html = zstd.ZstdDecompressor().decompress(packed, max_output_size=100_000_000)
+          if b'<!doctype html>' not in html[:1000].lower():
+              raise SystemExit('payload is not HTML')
+          if b'const QUESTION_BANK =' not in html:
+              raise SystemExit('question bank marker is missing')
+
+          gz = gzip.compress(html, compresslevel=9, mtime=0)
+          encoded = base64.b64encode(gz).decode('ascii')
+          out = Path('gzip_data')
+          out.mkdir(exist_ok=True)
+          for old in out.glob('*'):
+              old.unlink()
+          size = 700000
+          parts = [encoded[i:i + size] for i in range(0, len(encoded), size)]
+          for index, part in enumerate(parts):
+              (out / f'{index:03d}.txt').write_text(part, encoding='ascii')
+          manifest = {
+              'parts': len(parts),
+              'base64_chars': len(encoded),
+              'source_bytes': len(html),
+              'source_sha256': hashlib.sha256(html).hexdigest(),
+              'gzip_bytes': len(gz),
+              'gzip_sha256': hashlib.sha256(gz).hexdigest(),
+          }
+          (out / 'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
+          print(json.dumps(manifest, indent=2))
+          PY
+      - name: Save generated files
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add gzip_data
+          git commit -m 'Generate local gzip quiz data' || exit 0
+          git push origin HEAD:${{ github.head_ref }}
