@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#f4f7fb">
 <title>政府採購法隨機題庫</title>
 <style>
-:root{font-family:system-ui,-apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif;color:#14213d;background:#f4f7fb}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px}main{width:min(680px,100%);padding:30px;border:1px solid #dbe3ee;border-radius:18px;background:#fff;box-shadow:0 18px 50px rgba(20,33,61,.09);text-align:center}.spinner{width:44px;height:44px;margin:0 auto 18px;border:5px solid #dbe3ee;border-top-color:#2457a7;border-radius:50%;animation:spin .75s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}h1{font-size:1.35rem;margin:0 0 10px}p{line-height:1.7;margin:0;color:#52657c}progress{width:100%;height:12px;margin:22px 0 8px}#error{display:none;text-align:left;white-space:pre-wrap;color:#9f1d1d;background:#fff1f1;border:1px solid #efcaca;border-radius:12px;padding:14px;margin-top:18px}button{display:none;margin:16px auto 0;border:0;border-radius:10px;padding:11px 18px;background:#2457a7;color:#fff;font-weight:700;cursor:pointer}
+:root{font-family:system-ui,-apple-system,"Noto Sans TC","Microsoft JhengHei",sans-serif;color:#14213d;background:#f4f7fb}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px}main{width:min(680px,100%);padding:30px;border:1px solid #dbe3ee;border-radius:18px;background:#fff;box-shadow:0 18px 50px rgba(20,33,61,.09);text-align:center}.spinner{width:44px;height:44px;margin:0 auto 18px;border:5px solid #dbe3ee;border-top-color:#2457a7;border-radius:50%;animation:spin .75s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}h1{font-size:1.35rem;margin:0 0 10px}p{line-height:1.7;margin:0;color:#52657c}progress{width:100%;height:12px;margin:22px 0 8px}#error{display:none;text-align:left;white-space:pre-wrap;color:#9f1d1d;background:#fff1f1;border:1px solid #efcaca;border-radius:12px;padding:14px;margin-top:18px}button{display:none;margin:16px auto 0;border:0;border-radius:10px;padding:11px 18px;background:#2457a7;color:#fff;font-weight:700;cursor:pointer}.note{font-size:.9rem;margin-top:10px}
 </style>
 </head>
 <body>
@@ -14,20 +14,35 @@
 <div class="spinner" id="spinner" aria-hidden="true"></div>
 <h1>正在載入完整題庫</h1>
 <p id="status">準備 3,599 題與逐選項法規解析…</p>
-<progress id="progress" value="0" max="5"></progress>
+<progress id="progress" value="0" max="7"></progress>
+<p class="note" id="note">首次開啟需下載題庫；成功後會保留本機快取。</p>
 <div id="error" role="alert"></div>
 <button id="retry" type="button">重新載入</button>
 </main>
 <script type="module">
 const PART_COUNT=5;
-const statusEl=document.getElementById("status"),progressEl=document.getElementById("progress"),errorEl=document.getElementById("error"),retry=document.getElementById("retry"),spinner=document.getElementById("spinner");
+const CACHE_NAME="gpa-quiz-v4";
+const CACHE_KEY=new URL("__cached_full_quiz_v4.html",location.href).href;
+const VERSION="20260701-2";
+const statusEl=document.getElementById("status"),progressEl=document.getElementById("progress"),errorEl=document.getElementById("error"),retry=document.getElementById("retry"),spinner=document.getElementById("spinner"),note=document.getElementById("note");
 const sleep=()=>new Promise(r=>requestAnimationFrame(r));
 function normalizeBase64(value){return String(value).replace(/\s+/g,"").replace(/[\u200B-\u200D\uFEFF]/g,"").replace(/-/g,"+").replace(/_/g,"/").replace(/[^A-Za-z0-9+/=]/g,"")}
 function decodeBase64(value){let s=normalizeBase64(value).replace(/=+$/g,"");if(s.length%4===1)throw new Error("題庫資料長度不完整");s+="=".repeat((4-s.length%4)%4);const raw=atob(s),out=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)out[i]=raw.charCodeAt(i);return out}
-async function fetchPart(i){const url=new URL(`payload2/${i}.txt`,new URL(".",location.href));const res=await fetch(url,{cache:"force-cache"});if(!res.ok)throw new Error(`題庫資料 ${i+1}/${PART_COUNT} 載入失敗（HTTP ${res.status}）`);const text=await res.text();if(!text.trim())throw new Error(`題庫資料 ${i+1}/${PART_COUNT} 為空`);progressEl.value=i+1;statusEl.textContent=`已載入 ${i+1} / ${PART_COUNT} 份題庫資料`;return text}
-async function boot(){const parts=[];for(let i=0;i<PART_COUNT;i++){parts.push(await fetchPart(i));await sleep()}statusEl.textContent="正在解壓縮並驗證題庫…";await sleep();const module=await import("https://cdn.jsdelivr.net/npm/brotli-dec-wasm@2.3.2/index.js");const brotli=await module.default;const page=new TextDecoder("utf-8").decode(brotli.decompress(decodeBase64(parts.join(""))));if(!/^\s*<!doctype html>/i.test(page)||!page.includes("const QUESTION_BANK =")||!page.includes("政府採購法隨機題庫"))throw new Error("題庫內容驗證失敗，請重新整理後再試。");statusEl.textContent="題庫載入完成，正在開啟…";await sleep();document.open();document.write(page);document.close()}
-boot().catch(err=>{console.error(err);spinner.style.display="none";progressEl.style.display="none";statusEl.textContent="題庫載入失敗";errorEl.style.display="block";errorEl.textContent=String(err&&err.message||err);retry.style.display="block"});
-retry.addEventListener("click",()=>location.reload());
+function validPage(page){return /^\s*<!doctype html>/i.test(page)&&page.includes("const QUESTION_BANK =")&&page.includes("政府採購法隨機題庫")}
+async function openPage(page){if(!validPage(page))throw new Error("題庫內容驗證失敗");document.open();document.write(page);document.close()}
+async function readCache(){if(!("caches" in globalThis))return null;try{const hit=await (await caches.open(CACHE_NAME)).match(CACHE_KEY);if(!hit)return null;const page=await hit.text();return validPage(page)?page:null}catch{return null}}
+async function saveCache(page){if(!("caches" in globalThis))return;try{const cache=await caches.open(CACHE_NAME);await cache.put(CACHE_KEY,new Response(page,{headers:{"Content-Type":"text/html;charset=utf-8"}}))}catch(error){console.warn("題庫快取失敗",error)}}
+async function fetchPart(i){const url=new URL(`payload2/${i}.txt?v=${VERSION}`,new URL(".",location.href));const res=await fetch(url,{cache:"no-cache"});if(!res.ok)throw new Error(`題庫資料 ${i+1}/${PART_COUNT} 載入失敗（HTTP ${res.status}）`);const text=await res.text();if(!text.trim())throw new Error(`題庫資料 ${i+1}/${PART_COUNT} 為空`);progressEl.value=i+1;statusEl.textContent=`已載入 ${i+1} / ${PART_COUNT} 份題庫資料`;return text}
+async function nativeBrotli(bytes){try{const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("brotli"));return new Uint8Array(await new Response(stream).arrayBuffer())}catch{return null}}
+function timeout(promise,ms,label){return Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error(`${label} 逾時`)),ms))])}
+async function loadDecoder(){const urls=[
+  "https://unpkg.com/brotli-dec-wasm@2.3.2/index.js?module",
+  "https://esm.sh/brotli-dec-wasm@2.3.2",
+  "https://cdn.jsdelivr.net/npm/brotli-dec-wasm@2.3.2/index.js"
+];const errors=[];for(const url of urls){statusEl.textContent="正在準備題庫解壓縮元件…";try{const mod=await timeout(import(url),12000,url);const api=await timeout(Promise.resolve(mod.default),12000,`${url} 初始化`);if(api&&typeof api.decompress==="function")return api;if(mod&&typeof mod.decompress==="function")return mod;throw new Error("模組未提供 decompress()") }catch(error){errors.push(`${url}\n${String(error?.message||error)}`)}}throw new Error(`解壓縮元件皆無法載入。\n\n${errors.join("\n\n")}`)}
+async function boot(){const cached=await readCache();if(cached){statusEl.textContent="正在開啟本機快取題庫…";progressEl.value=7;await sleep();return openPage(cached)}const parts=[];for(let i=0;i<PART_COUNT;i++){parts.push(await fetchPart(i));await sleep()}statusEl.textContent="正在解碼題庫資料…";progressEl.value=6;await sleep();const packed=decodeBase64(parts.join(""));let output=await nativeBrotli(packed);if(!output){const decoder=await loadDecoder();output=decoder.decompress(packed)}statusEl.textContent="正在驗證並儲存題庫…";progressEl.value=7;await sleep();const page=new TextDecoder("utf-8").decode(output);if(!validPage(page))throw new Error("題庫解壓縮完成，但內容驗證失敗。請清除網站快取後再試。");await saveCache(page);statusEl.textContent="題庫載入完成，正在開啟…";note.textContent="下次開啟將優先使用本機快取。";await sleep();return openPage(page)}
+boot().catch(err=>{console.error(err);spinner.style.display="none";progressEl.style.display="none";statusEl.textContent="題庫載入失敗";note.style.display="none";errorEl.style.display="block";errorEl.textContent=String(err&&err.message||err);retry.style.display="block"});
+retry.addEventListener("click",async()=>{try{if("caches" in globalThis)await caches.delete(CACHE_NAME)}finally{location.reload()}});
 </script>
 </body>
 </html>
