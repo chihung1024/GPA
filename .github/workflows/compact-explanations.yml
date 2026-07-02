@@ -1,19 +1,21 @@
 name: Compact question explanations
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/compact-explanations.yml
+  pull_request_target:
+    types: [opened]
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   compact:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.title == 'Run compact explanation migration'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -31,6 +33,4 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add index.html
           git diff --cached --quiet || git commit -m 'Condense explanations for fast practice'
-          git push
-
-# One-time merge trigger: 2026-07-02
+          git push origin HEAD:main
