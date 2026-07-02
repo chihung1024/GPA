@@ -1,0 +1,19 @@
+/* GPA compact explanation UI — injected into index.html by the one-time workflow. */
+.quick-solution{display:grid;gap:12px}
+.quick-block{padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--surface) 88%,transparent)}
+.quick-block h4{margin:0 0 5px;font-size:.92rem;color:var(--muted);letter-spacing:.02em}
+.quick-block p{margin:0}
+.quick-rule{border-left:4px solid var(--primary);background:var(--primary-soft)}
+.quick-rule p{font-weight:750}
+.quick-reason{font-size:.95rem}
+.quick-choice-list{display:grid;gap:7px;margin:0;padding:0;list-style:none}
+.quick-choice-item{display:grid;grid-template-columns:34px 1fr;gap:9px;align-items:start;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.quick-choice-item.is-answer{border-color:var(--correct);background:var(--correct-soft)}
+.quick-choice-label{width:30px;height:30px;display:inline-grid;place-items:center;border-radius:9px;background:var(--surface-2);font-weight:800}
+.quick-choice-text{line-height:1.55}
+.quick-choice-text b{display:inline}
+.quick-basis{font-size:.91rem;color:var(--muted);padding:0 2px}
+.compact-legal{margin-top:0}
+.compact-legal .legal-ref-list{gap:8px}
+.compact-legal .legal-ref{padding:10px 12px}
+@media(max-width:680px){.quick-solution{gap:9px}.quick-block{padding:10px 11px}.quick-choice-item{padding:8px 9px}.quick-reason{font-size:.91rem}}
