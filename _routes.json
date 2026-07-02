@@ -1,5 +1,0 @@
-{
-  "version": 1,
-  "include": ["/quiz-content", "/brotli/*"],
-  "exclude": ["/payload2/*", "/offline_quiz/*", "/gzip_data/*"]
-}
