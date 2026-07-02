@@ -4,13 +4,15 @@ on:
   pull_request_target:
     types: [opened]
   workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
 
 permissions:
   contents: write
 
 jobs:
   compact:
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.title == 'Run compact explanation migration'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event.pull_request.title == 'Run compact explanation migration'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
