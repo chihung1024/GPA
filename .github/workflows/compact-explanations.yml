@@ -32,3 +32,5 @@ jobs:
           git add index.html
           git diff --cached --quiet || git commit -m 'Condense explanations for fast practice'
           git push
+
+# One-time merge trigger: 2026-07-02
